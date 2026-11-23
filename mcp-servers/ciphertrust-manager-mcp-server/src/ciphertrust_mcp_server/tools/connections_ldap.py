@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from ..utils.helpers import merged_properties, read_secret_file
 from .base import BaseTool
 
 
@@ -88,8 +89,10 @@ class ConnectionLDAPModifyParams(BaseModel):
 
 class ConnectionLDAPTestParams(BaseModel):
     """Parameters for testing an LDAP connection."""
+    name: str = Field(..., description="Name of the LDAP connection to test (ksctl requires it)")
     test_username: str = Field(..., description="Username to use when testing connection")
-    test_password: str = Field(..., description="Password to use when testing connection")
+    test_password: Optional[str] = Field(None, description="Password to use when testing connection (prefer test_password_file)")
+    test_password_file: Optional[str] = Field(None, description="Local file holding the test user's password, so it never appears in the tool call")
     # Connection config for direct testing
     server_url: Optional[str] = Field(None, description="LDAP URL for your server")
     root_dn: Optional[str] = Field(None, description="Starting point to use when searching for users")
@@ -124,7 +127,7 @@ class ConnectionLDAPManagementTool(BaseTool):
                     "enum": ["create", "list", "get", "delete", "modify", "test"],
                     "description": "Action to perform"
                 },
-                # Merge all params from the old tool classes
+                **merged_properties(ConnectionLDAPCreateParams, ConnectionLDAPListParams, ConnectionLDAPGetParams, ConnectionLDAPDeleteParams, ConnectionLDAPModifyParams, ConnectionLDAPTestParams),
             },
             "required": ["action"]
         }
@@ -227,10 +230,15 @@ class ConnectionLDAPManagementTool(BaseTool):
             return result.get("data", result.get("stdout", ""))
         elif action == "test":
             params = ConnectionLDAPTestParams(**kwargs)
+            password = (read_secret_file(params.test_password_file) if params.test_password_file
+                        else params.test_password)
+            if not password:
+                raise ValueError("test_password_file (or test_password) is required")
             args = ["connections", "test"]
             args.extend(["--strategy", "ldap"])
+            args.extend(["--name", params.name])
             args.extend(["--test-username", params.test_username])
-            args.extend(["--test-password", params.test_password])
+            args.extend(["--test-password", password])
             if params.server_url:
                 args.extend(["--server-url", params.server_url])
             if params.root_dn:

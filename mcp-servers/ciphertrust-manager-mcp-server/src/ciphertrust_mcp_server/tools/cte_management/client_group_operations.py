@@ -1,7 +1,7 @@
 """Client group operations for CTE management."""
 
 from typing import Any
-from .base import CTESubTool
+from .base import CTESubTool, bool_flag
 
 class ClientGroupOperations(CTESubTool):
     """Handles all client group operations for CTE management."""
@@ -162,11 +162,11 @@ class ClientGroupOperations(CTESubTool):
         if kwargs.get("password_creation_method"):
             args.extend(["--password-creation-method", kwargs["password_creation_method"]])
         if kwargs.get("comm_enabled") is not None:
-            args.append("--comm-enabled" if kwargs["comm_enabled"] else "--no-comm-enabled")
+            args.append(bool_flag("--comm-enabled", kwargs["comm_enabled"]))
         if kwargs.get("cte_client_locked") is not None:
-            args.append("--cte-client-locked" if kwargs["cte_client_locked"] else "--no-cte-client-locked")
+            args.append(bool_flag("--cte-client-locked", kwargs["cte_client_locked"]))
         if kwargs.get("system_locked") is not None:
-            args.append("--system-locked" if kwargs["system_locked"] else "--no-system-locked")
+            args.append(bool_flag("--system-locked", kwargs["system_locked"]))
         if kwargs.get("cte_profile_identifier"):
             args.extend(["--cte-profile-identifier", kwargs["cte_profile_identifier"]])
         

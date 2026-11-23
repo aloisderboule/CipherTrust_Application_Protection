@@ -506,7 +506,7 @@ class KeyCreateTool(BaseTool):
             if params.aliases:
                 key_json["aliases"] = [{"alias": alias.strip(), "type": "string"} for alias in params.aliases.split(",")]
             if params.usage_mask is not None:
-                key_json["usage_mask"] = params.usage_mask
+                key_json["usageMask"] = params.usage_mask  # REST field name (camelCase)
             
             # Write to temporary JSON file
             with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
@@ -1441,7 +1441,7 @@ class KeyManagementTool(BaseTool):
                 if params.aliases:
                     key_json["aliases"] = [{"alias": alias.strip(), "type": "string"} for alias in params.aliases.split(",")]
                 if params.usage_mask is not None:
-                    key_json["usage_mask"] = params.usage_mask
+                    key_json["usageMask"] = params.usage_mask  # REST field name (camelCase)
                 
                 # Write to temporary JSON file
                 with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:

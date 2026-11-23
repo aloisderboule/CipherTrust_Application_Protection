@@ -1,6 +1,7 @@
 """Helper utilities for CipherTrust MCP Server."""
 
 import json
+from pathlib import Path
 from typing import Any
 
 
@@ -36,7 +37,8 @@ def sanitize_command_args(args: list[str]) -> list[str]:
     Returns:
         Sanitized arguments safe for logging
     """
-    sensitive_flags = ["--password", "--pword", "--jwt", "--refresh-token"]
+    sensitive_flags = ["--password", "--pword", "--jwt", "--refresh-token", "--bind-password",
+                       "--test-password", "--client-secret", "--conn-password", "--bkpassword"]
     sanitized = []
     skip_next = False
     
@@ -51,3 +53,29 @@ def sanitize_command_args(args: list[str]) -> list[str]:
             sanitized.append(arg)
     
     return sanitized
+
+
+def merged_properties(*models: Any) -> dict[str, Any]:
+    """JSON schema properties of several pydantic models, merged (first wins).
+
+    For grouped tools whose actions each have their own parameter model: the
+    tool's schema must list every action's parameters, or MCP clients never
+    send them.
+    """
+    props: dict[str, Any] = {}
+    for model in models:
+        for name, prop in model.model_json_schema().get("properties", {}).items():
+            props.setdefault(name, prop)
+    return props
+
+
+def read_secret_file(path: str) -> str:
+    """Read a secret (password, client secret) from a local file, stripped.
+
+    Lets a caller pass a file path instead of the secret itself, so the secret
+    never appears in the MCP tool call or the conversation.
+    """
+    secret = Path(path).expanduser().read_text(encoding="utf-8").strip()
+    if not secret:
+        raise ValueError(f"secret file is empty: {path}")
+    return secret

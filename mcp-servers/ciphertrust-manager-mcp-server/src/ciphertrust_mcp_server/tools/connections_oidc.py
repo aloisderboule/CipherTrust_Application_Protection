@@ -4,6 +4,7 @@ from typing import Any, Optional, List
 
 from pydantic import BaseModel, Field
 
+from ..utils.helpers import merged_properties
 from .base import BaseTool
 
 
@@ -102,7 +103,7 @@ class ConnectionOIDCManagementTool(BaseTool):
                     "enum": ["create", "list", "get", "delete", "modify", "refresh"],
                     "description": "Action to perform"
                 },
-                # Merge all params from the old tool classes
+                **merged_properties(ConnectionOIDCCreateParams, ConnectionOIDCListParams, ConnectionOIDCGetParams, ConnectionOIDCDeleteParams, ConnectionOIDCModifyParams, ConnectionOIDCRefreshParams),
             },
             "required": ["action"]
         }

@@ -1,7 +1,7 @@
 """Client operations for CTE management."""
 
 from typing import Any
-from .base import CTESubTool
+from .base import CTESubTool, bool_flag
 
 class ClientOperations(CTESubTool):
     """Handles all client and guardpoint operations for CTE management."""
@@ -301,19 +301,19 @@ class ClientOperations(CTESubTool):
         if kwargs.get("password_creation_method"):
             args.extend(["--password-creation-method", kwargs["password_creation_method"]])
         if kwargs.get("comm_enabled") is not None:
-            args.append("--comm-enabled" if kwargs["comm_enabled"] else "--no-comm-enabled")
+            args.append(bool_flag("--comm-enabled", kwargs["comm_enabled"]))
         if kwargs.get("reg_allowed") is not None:
-            args.append("--reg-allowed" if kwargs["reg_allowed"] else "--no-reg-allowed")
+            args.append(bool_flag("--reg-allowed", kwargs["reg_allowed"]))
         if kwargs.get("cte_client_locked") is not None:
-            args.append("--cte-client-locked" if kwargs["cte_client_locked"] else "--no-cte-client-locked")
+            args.append(bool_flag("--cte-client-locked", kwargs["cte_client_locked"]))
         if kwargs.get("system_locked") is not None:
-            args.append("--system-locked" if kwargs["system_locked"] else "--no-system-locked")
+            args.append(bool_flag("--system-locked", kwargs["system_locked"]))
         if kwargs.get("cte_profile_identifier"):
             args.extend(["--cte-profile-identifier", kwargs["cte_profile_identifier"]])
         if kwargs.get("host_name"):
             args.extend(["--host-name", kwargs["host_name"]])
         if kwargs.get("client_mfa_enabled") is not None:
-            args.append("--client-mfa-enabled" if kwargs["client_mfa_enabled"] else "--no-client-mfa-enabled")
+            args.append(bool_flag("--client-mfa-enabled", kwargs["client_mfa_enabled"]))
         
         result = self.execute_with_domain(args, kwargs.get("domain"), kwargs.get("auth_domain"))
         return result.get("data", result.get("stdout", ""))
@@ -330,7 +330,10 @@ class ClientOperations(CTESubTool):
         if kwargs.get("cte_policy_identifier"):
             args.extend(["--cte-policy-identifier", kwargs["cte_policy_identifier"]])
         if not kwargs.get("guard_enabled", True):
-            args.append("--no-guard-enabled")
+            # create-guardpoints has no --guard-enabled flag: GuardPoints are
+            # created enabled. Disable afterwards with client_modify_guardpoint.
+            raise ValueError("guard_enabled=false is not supported on create; create the GuardPoint, "
+                             "then call client_modify_guardpoint with guard_enabled=false")
         if kwargs.get("auto_mount_enabled"):
             args.append("--auto-mount-enabled")
         if kwargs.get("cifs_enabled"):
@@ -338,7 +341,7 @@ class ClientOperations(CTESubTool):
         if kwargs.get("early_access"):
             args.append("--early-access")
         if not kwargs.get("preserve_sparse_regions", True):
-            args.append("--no-preserve-sparse-regions")
+            args.append(bool_flag("--preserve-sparse-regions", False))
         if kwargs.get("mfa_enabled"):
             args.append("--mfa-enabled")
         if kwargs.get("intelligent_protection"):
@@ -380,9 +383,9 @@ class ClientOperations(CTESubTool):
         args.extend(["--guard-point-identifier", kwargs["guard_point_identifier"]])
         
         if kwargs.get("guard_enabled") is not None:
-            args.append("--guard-enabled" if kwargs["guard_enabled"] else "--no-guard-enabled")
+            args.append(bool_flag("--guard-enabled", kwargs["guard_enabled"]))
         if kwargs.get("mfa_enabled") is not None:
-            args.append("--mfa-enabled" if kwargs["mfa_enabled"] else "--no-mfa-enabled")
+            args.append(bool_flag("--mfa-enabled", kwargs["mfa_enabled"]))
         
         result = self.execute_with_domain(args, kwargs.get("domain"), kwargs.get("auth_domain"))
         return result.get("data", result.get("stdout", ""))

@@ -3,6 +3,15 @@
 from typing import Any, Dict, Optional
 from abc import ABC, abstractmethod
 
+
+def bool_flag(flag: str, value: Any) -> str:
+    """ksctl boolean flag with an explicit value, e.g. --mfa-enabled=false.
+
+    ksctl (cobra) has no --no-<flag> negation: --no-mfa-enabled fails with
+    "unknown flag". A false value must be passed as --<flag>=false.
+    """
+    return f"{flag}={'true' if value else 'false'}"
+
 class CTESubTool(ABC):
     """Base class for CTE sub-tools"""
     

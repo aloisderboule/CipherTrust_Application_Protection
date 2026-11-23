@@ -1,7 +1,7 @@
 """Policy operations for CTE management."""
 
 from typing import Any
-from .base import CTESubTool
+from .base import CTESubTool, bool_flag
 
 class PolicyOperations(CTESubTool):
     """Handles all policy-related operations for CTE management."""
@@ -476,7 +476,7 @@ class PolicyOperations(CTESubTool):
         if kwargs.get("description") is not None:
             args.extend(["--description", kwargs["description"]])
         if kwargs.get("never_deny") is not None:
-            args.append("--never-deny" if kwargs["never_deny"] else "--no-never-deny")
+            args.append(bool_flag("--never-deny", kwargs["never_deny"]))
         
         if kwargs.get("restrict_update_json"):
             args.extend(["--restrict-update-json", kwargs["restrict_update_json"]])
@@ -562,11 +562,11 @@ class PolicyOperations(CTESubTool):
         if kwargs.get("resource_set_identifier"):
             args.extend(["--resource-set-identifier", kwargs["resource_set_identifier"]])
         if kwargs.get("exclude_user_set") is not None:
-            args.append("--exclude-user-set" if kwargs["exclude_user_set"] else "--no-exclude-user-set")
+            args.append(bool_flag("--exclude-user-set", kwargs["exclude_user_set"]))
         if kwargs.get("exclude_process_set") is not None:
-            args.append("--exclude-process-set" if kwargs["exclude_process_set"] else "--no-exclude-process-set")
+            args.append(bool_flag("--exclude-process-set", kwargs["exclude_process_set"]))
         if kwargs.get("exclude_resource_set") is not None:
-            args.append("--exclude-resource-set" if kwargs["exclude_resource_set"] else "--no-exclude-resource-set")
+            args.append(bool_flag("--exclude-resource-set", kwargs["exclude_resource_set"]))
         
         result = self.execute_with_domain(args, kwargs.get("domain"), kwargs.get("auth_domain"))
         return result.get("data", result.get("stdout", ""))
@@ -691,7 +691,7 @@ class PolicyOperations(CTESubTool):
         if kwargs.get("resource_set_identifier"):
             args.extend(["--resource-set-identifier", kwargs["resource_set_identifier"]])
         if kwargs.get("is_exclusion_rule") is not None:
-            args.append("--is-exclusion-rule" if kwargs["is_exclusion_rule"] else "--no-is-exclusion-rule")
+            args.append(bool_flag("--is-exclusion-rule", kwargs["is_exclusion_rule"]))
         
         result = self.execute_with_domain(args, kwargs.get("domain"), kwargs.get("auth_domain"))
         return result.get("data", result.get("stdout", ""))

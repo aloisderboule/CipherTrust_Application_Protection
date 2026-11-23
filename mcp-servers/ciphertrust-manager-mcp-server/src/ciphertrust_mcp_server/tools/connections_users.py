@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from ..utils.helpers import merged_properties
 from .base import BaseTool
 
 
@@ -51,7 +52,7 @@ class ConnectionUsersManagementTool(BaseTool):
                     "enum": ["list", "get"],
                     "description": "Action to perform"
                 },
-                # Merge all params from the old tool classes
+                **merged_properties(ConnectionUsersListParams, ConnectionUsersGetParams),
             },
             "required": ["action"]
         }
