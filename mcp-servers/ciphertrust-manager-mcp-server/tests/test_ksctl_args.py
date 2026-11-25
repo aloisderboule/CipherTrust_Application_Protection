@@ -17,7 +17,10 @@ from ciphertrust_mcp_server.tools.connections_users import ConnectionUsersManage
 from ciphertrust_mcp_server.tools.cte_management.base import bool_flag
 from ciphertrust_mcp_server.tools.cte_management.client_group_operations import ClientGroupOperations
 from ciphertrust_mcp_server.tools.cte_management.client_operations import ClientOperations
+from ciphertrust_mcp_server.tools.cte_management.ldt_comm_group_operations import LDTCommGroupOperations
+from ciphertrust_mcp_server.tools.cte_management.main import CTEManagementTool
 from ciphertrust_mcp_server.tools.cte_management.policy_operations import PolicyOperations
+from ciphertrust_mcp_server.tools.cte_management.profile_operations import ProfileOperations
 from ciphertrust_mcp_server.tools.keys import KeyManagementTool
 from ciphertrust_mcp_server.utils.helpers import sanitize_command_args
 
@@ -141,3 +144,101 @@ def test_cte_key_json_uses_rest_field_names():
     assert seen["usageMask"] == 76 and "usage_mask" not in seen
     assert seen["xts"] is True
     assert seen["meta"]["cte"] == {"cte_versioned": True, "encryption_mode": "CBC_CS1", "persistent_on_client": True}
+
+
+# --- CTE tool schema: every action parameter is declared ---------------------
+# The tool sets additionalProperties: false, so an undeclared parameter can't
+# be sent at all.
+
+def test_cte_schema_declares_every_action_parameter():
+    schema = CTEManagementTool().get_schema()
+    props = set(schema["properties"])
+    missing = {(action, p) for action, req in schema["action_requirements"].items()
+               for p in req.get("required", []) + req.get("optional", []) if p not in props}
+    assert not missing
+    assert {"client_group_create_guardpoint", "ldt_comm_group_create"} <= set(schema["properties"]["action"]["enum"])
+
+
+# --- client group members and GuardPoints ------------------------------------
+
+def test_client_group_add_clients():
+    rec = Recorder()
+    run(ClientGroupOperations(rec).execute_operation(
+        "client_group_add_clients", client_group_identifier="uc-smb-hosts",
+        cte_client_list="10.0.4.12,10.0.4.15", inherit_attributes=True))
+    assert rec.args == ["cte", "client-groups", "add-clients", "--client-group-identifier", "uc-smb-hosts",
+                        "--cte-client-list", "10.0.4.12,10.0.4.15", "--inherit-attributes=true"]
+
+
+def test_client_group_create_cifs_guardpoint():
+    # what cte_demo.py cm-client-group sends through REST today
+    rec = Recorder()
+    run(ClientGroupOperations(rec).execute_operation(
+        "client_group_create_guardpoint", client_group_identifier="uc-smb-hosts",
+        guard_path_list=r"\\fs\share\letters", guard_point_type="directory_auto",
+        cte_policy_identifier="uc-smb-policy", cifs_enabled=True, preserve_sparse_regions=True,
+        network_share_credentials_identifier="uc-cifs-share"))
+    a = rec.args
+    assert a[:3] == ["cte", "client-groups", "create-guardpoints"]
+    assert a[a.index("--guard-path-list") + 1] == r"\\fs\share\letters"
+    assert a[a.index("--network-share-credentials-identifier") + 1] == "uc-cifs-share"
+    assert {"--cifs-enabled=true", "--preserve-sparse-regions=true"} <= set(a)
+    assert "--mfa-enabled=false" not in a  # unset booleans are left to CM's defaults
+
+
+def test_client_group_guardpoint_mfa_off():
+    rec = Recorder()
+    run(ClientGroupOperations(rec).execute_operation(
+        "client_group_modify_guardpoint", client_group_identifier="uc-smb-hosts",
+        guard_point_identifier="gp1", mfa_enabled=False))
+    assert rec.args == ["cte", "client-groups", "modify-guardpoints", "--client-group-identifier", "uc-smb-hosts",
+                        "--guard-point-identifier", "gp1", "--mfa-enabled=false"]
+
+
+@pytest.mark.parametrize("action, command", [
+    ("client_group_list_clients", "list-clients"),
+    ("client_group_list_guardpoints", "list-guardpoints"),
+])
+def test_client_group_lists(action, command):
+    rec = Recorder()
+    run(ClientGroupOperations(rec).execute_operation(action, client_group_identifier="g"))
+    assert rec.args[:3] == ["cte", "client-groups", command]
+    assert "--limit" in rec.args
+
+
+# --- LDT Communication Groups -------------------------------------------------
+
+def test_ldt_comm_group_create_and_add_clients():
+    rec = Recorder()
+    ops = LDTCommGroupOperations(rec)
+    run(ops.execute_operation("ldt_comm_group_create", ldt_comm_group_name="uc-smb-ldt",
+                              ldt_comm_group_description="SMB share"))
+    assert rec.args == ["cte", "ldt-group-comm-services", "create", "--cte-ldt-group-comm-service-name",
+                        "uc-smb-ldt", "--cte-ldt-group-comm-service-description", "SMB share"]
+    run(ops.execute_operation("ldt_comm_group_add_clients", ldt_comm_group_identifier="uc-smb-ldt",
+                              cte_client_list="10.0.4.12,10.0.4.15"))
+    assert rec.args == ["cte", "ldt-group-comm-services", "add-clients", "--cte-ldt-group-comm-service-identifier",
+                        "uc-smb-ldt", "--cte-client-list", "10.0.4.12,10.0.4.15"]
+
+
+def test_ldt_comm_group_status():
+    rec = Recorder()
+    run(LDTCommGroupOperations(rec).execute_operation("ldt_comm_group_status", ldt_comm_group_identifier="g"))
+    assert rec.args[:3] == ["cte", "ldt-group-comm-services", "get-status-details"]
+
+
+# --- profile: logging, syslog, MFA ---------------------------------------------
+
+def test_profile_modify_logging_and_mfa():
+    rec = Recorder()
+    syslog = {"local": False, "syslog_threshold": "INFO",
+              "servers": [{"name": "10.0.4.20", "port": 5514, "protocol": "UDP", "message_format": "RFC5424"}]}
+    run(ProfileOperations(rec).execute_operation(
+        "profile_modify", cte_profile_identifier="DefaultClientProfile",
+        policy_evaluation_logger={"threshold": "INFO", "syslog_enabled": True}, syslog_settings=syslog,
+        oidc_connection_id="uc-keycloak-cte", concise_logging=False))
+    a = rec.args
+    assert json.loads(a[a.index("--policy-evaluation-logger-json") + 1]) == {"threshold": "INFO", "syslog_enabled": True}
+    assert json.loads(a[a.index("--syslog-settings-json") + 1]) == syslog
+    assert a[a.index("--oidc-connection-id") + 1] == "uc-keycloak-cte"
+    assert "--concise-logging=false" in a

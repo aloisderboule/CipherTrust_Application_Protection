@@ -11,6 +11,7 @@ from .client_operations import ClientOperations
 from .client_group_operations import ClientGroupOperations
 from .profile_operations import ProfileOperations
 from .csi_operations import CSIOperations
+from .ldt_comm_group_operations import LDTCommGroupOperations
 
 class CTEManagementTool(BaseTool):
     """Unified CTE Management Tool that delegates to specialized sub-tools.
@@ -30,7 +31,8 @@ class CTEManagementTool(BaseTool):
             'client': ClientOperations(self.execute_with_domain),
             'client_group': ClientGroupOperations(self.execute_with_domain),
             'profile': ProfileOperations(self.execute_with_domain),
-            'csi': CSIOperations(self.execute_with_domain)
+            'csi': CSIOperations(self.execute_with_domain),
+            'ldt_comm_group': LDTCommGroupOperations(self.execute_with_domain)
         }
         
         # Build operation mapping
@@ -47,7 +49,8 @@ class CTEManagementTool(BaseTool):
     def description(self) -> str:
         return (
             "CTE (CipherTrust Transparent Encryption) management operations. "
-            "Supports policies, user sets, process sets, resource sets, clients, profiles, and CSI storage groups. "
+            "Supports policies, user sets, process sets, resource sets, clients, client groups (members and "
+            "group GuardPoints), LDT Communication Groups, profiles, and CSI storage groups. "
             "Each action has specific required and optional parameters - see action_requirements in schema for details."
         )
     
